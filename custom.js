@@ -87,16 +87,13 @@ cls.onclick = ()=> {
     box.scrollTop=box.scrollHeight;
   }
   
-  // Wyjście/opuszczenie karty → wyślij "end"
-window.addEventListener('pagehide', () => {
-  try { navigator.sendBeacon('/logs/chat/chat_end.php'); } catch (_) {}
-}, { capture: true });
-// Zamknięcie w innej karcie → schowaj też tutaj
-window.addEventListener('storage', (e) => {
-  if (e.key === 'chatClosedSession' && e.newValue === '1' && w && w.style.display !== 'none') {
-    w.style.display = 'none';
-  }
-}, { passive: true });
+  // Wyjście z karty obsługiwane niżej (jedno zdarzenie)
+  // Zamknięcie w innej karcie → schowaj też tutaj
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'chatClosedSession' && e.newValue === '1' && w && w.style.display !== 'none') {
+      w.style.display = 'none';
+    }
+  }, { passive: true });
 
 
 
@@ -166,8 +163,11 @@ onReady(() => {
 })();
 (() => {
   const CHAT_START = Date.now();
+  let sent = false;
 
   function sendTranscriptOnExit() {
+    if (sent) return;
+    sent = true;
     const data = new Blob(
       [JSON.stringify({ start: CHAT_START })],
       { type: 'application/json' }
@@ -175,9 +175,8 @@ onReady(() => {
     navigator.sendBeacon('/logs/chat/chat_end.php', data);
   }
 
-  window.addEventListener('pagehide', sendTranscriptOnExit);
-
+  window.addEventListener('pagehide', sendTranscriptOnExit, { capture: true });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') sendTranscriptOnExit();
-  });
+  }, { capture: true });
 })();
